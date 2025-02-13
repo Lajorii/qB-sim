@@ -23,13 +23,12 @@ class Partikkel:
         self.x = x
         self.y = y
         self.v = np.array([dx, dy, 0], dtype='float64') # m/s
+        self.start_v = np.array([dx, dy, 0], dtype='float64')
         self.pos = np.array([x, y, 0], dtype='float64')
         self.radius = radius
         self.farge = farge
 
-        self.reell_fart = 6
-
-    def oppdater_og_tegn(self, skjerm, magnetfelt, delta_tid, lengde, høyde):  # Small timestep
+    def oppdater_og_tegn(self, skjerm, magnetfelt, delta_tid, tidsskala, lengde, høyde, faktor):  # Small timestep
         if magnetfelt is None:
             return
         
@@ -40,13 +39,16 @@ class Partikkel:
             )
 
         if er_i_magnetfelt(self, magnetfelt):
-            F = self.q * np.cross(self.v, magnetfelt.retning)
+            F = self.q * np.cross(self.v, magnetfelt.retning) * faktor
             a = F / self.m
-            self.v = self.v + a * delta_tid
 
-            self.v = self.v / np.linalg.norm(self.v) * self.reell_fart
+            self.v = self.v + a * delta_tid * tidsskala
 
-        self.pos += self.v
+            self.v = (self.v/np.linalg.norm(self.v)) * np.linalg.norm(self.start_v)
+
+            print(np.linalg.norm(self.v))
+
+        self.pos += self.v*1000 * tidsskala * faktor
 
         pg.draw.circle(skjerm, self.farge, (self.pos[0], self.pos[1]), self.radius)
 

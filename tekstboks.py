@@ -1,15 +1,18 @@
 import pygame as pg
 import numpy as np
 
-def info_boks(skjerm, tid, partikler, magnetfelt):
-    font = pg.font.Font(None, 16)
-    tekst = font.render(f"tid: {tid}", True, (0, 0, 0))
-    skjerm.blit(tekst, (10, 10))
+def vis_info(skjerm, tid, partikler, magnetfelt):
+    font = pg.font.Font(None, 24)
+    info_tekst = f"Tid: {tid:.5f}\n"
 
     for i, partikkel in enumerate(partikler):
-        tekst = font.render(f"partikkel {i+1}: posisjon: ({partikkel.pos[0]:.1f}, {partikkel.pos[1]:.1f}) fartsvektor: ({partikkel.v[0]:.1f}, {partikkel.v[1]:.1f}), fart: {np.linalg.norm(partikkel.v):.1f}", True, (0, 0, 0))
-        skjerm.blit(tekst, (10, 20 + 20*i))
+        info_tekst += f"Partikkel {i+1}: v = {np.linalg.norm(partikkel.v):.5f}\n"
 
-    for i, felt in enumerate(magnetfelt):
-        tekst = font.render(f"magnetfelt {i+1}: retning: {felt.retning}", True, (0, 0, 0))
-        skjerm.blit(tekst, (10, 20 + 20*(i + len(partikler))))
+    lines = info_tekst.split("\n")
+    y_offset = 14
+
+    for line in lines:
+        if line.strip():
+            tekst = font.render(line, True, (0, 0, 0))
+            skjerm.blit(tekst, (10, y_offset))
+            y_offset += 25
