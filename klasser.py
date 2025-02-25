@@ -10,12 +10,16 @@ class Magnetfelt:
         self.farge = farge
         self.x = x
         self.y = y
+        self.font = pg.font.Font(None, 15)
      
         self.retning = np.array([0, 0, B])
 
 
     def tegn(self, skjerm):
         pg.draw.rect(skjerm, self.farge, (self.x, self.y, self.lengde, self.høyde))
+
+        styrke_tekst = self.font.render(f"B = {self.B:.5} Wb", True, (0, 0, 0))
+        skjerm.blit(styrke_tekst, (self.x+10, self.y+10))
 
 
 class Partikkel:
@@ -28,8 +32,14 @@ class Partikkel:
         self.radius = radius
         self.farge = farge
 
-    def oppdater_og_tegn(self, skjerm, magnetfelt, delta_tid, tidsskala, lengde, høyde, faktor):  # Small timestep
+    def oppdater_og_tegn(self, skjerm, magnetfelt, delta_tid, tidsskala, lengde, høyde, faktor, er_pauset):  # Small timestep
+        if er_pauset:
+            pg.draw.circle(skjerm, self.farge, (self.pos[0], self.pos[1]), self.radius)
+            return
+        
         if magnetfelt is None:
+            self.pos += self.v*1000 * tidsskala * faktor
+            pg.draw.circle(skjerm, self.farge, (self.pos[0], self.pos[1]), self.radius)
             return
         
         def er_i_magnetfelt(self, magnetfelt):

@@ -1,14 +1,12 @@
 import pygame as pg
+from pygame.locals import K_UP, K_DOWN, K_RIGHT
 import pygame_widgets as pg_w
 from pygame_widgets.slider import Slider
 from pygame_widgets.textbox import TextBox
 from pygame_widgets.button import Button
-from colors import HVIT, SORT, RØD, GRØNN, BLÅ
+from colors import HVIT, SORT, RØD, GRØNN, BLÅ, LYSEGRØNN
 from klasser import Magnetfelt, Elektron, Proton
 from tekstboks import vis_info
-
-# lag en timer som teller opp veldig sakte og bruk den tiden til å regne ut. Gang posisjonen med tusen for å få meter.
-# Eventuelt ha en maks reell fart som skalerer farten til partiklen og bruker forholdet mellom farten til å regne ut passelig tid.
 
 # basic stuff
 lengde = 1000 # 1 meter
@@ -21,19 +19,20 @@ skjerm = pg.display.set_mode(size=vindu_størrelse)
 FPS = 60
 
 # deklarerer partikler og magnetfelt
-e1 = Elektron(600, 300, 0.01, 0)
-p1 = Proton(0, 250, 0.005, 0) # fart i m/s
-b1 = Magnetfelt(-0.00000001, 500, 300, 300, 100) # negativ for å få retning nedover
+
+b1 = Magnetfelt(-0.00001, 500, 500, 100, 100, farge=GRØNN)
+e1 = Elektron(600, 300, 3e2, 0)
+p1 = Proton(0, 250, 300, 0) # fart i m/s
 
 partikler = [e1, p1]
-magnetfelt = [b1]
+alle_magnetfelt = []
 
 slider = Slider(skjerm,
                 15, høyde-20, 300, 7,
-                min=-6,
-                max=0,
+                min=-8,
+                max=0.30103,
                 step=0.001,
-                initial=-6)
+                initial=-8)
 slider_output = TextBox(skjerm, 15, høyde-60, 210, 30, fontSize=20, borderThickness=1)
 slider_output.disable()
 medgått_tid = 0
@@ -49,40 +48,100 @@ tidsstatus = SimuleringStatus()
 
 button = Button(
     skjerm, 
-    400, høyde-50, 70, 20,  # Posisjon og størrelse
+    330, høyde-35, 90, 30,  # Posisjon og størrelse
     text='Reverser tid',
-    fontSize=10,
-    inactiveColour=(200, 50, 0),
-    hoverColour=(150, 0, 0),
-    pressedColour=(0, 200, 20),
-    onClick=tidsstatus.bytt # Pass function reference, not call it
+    fontSize=15,
+    inactiveColour=(200, 200, 200),
+    hoverColour=(230, 230, 230),
+    pressedColour=(150, 150, 150),
+    onClick=tidsstatus.bytt # funksjon referanse
 )
 
-# løkke for å kjøre
+skal_lage_magnetfelt = False
+klar_for_magnetfelt = False
+start_posisjon_x, start_posisjon_y = None, None
+nytt_magnetfelt = None
+
+styrke = 0.00005
+
 kjører_programmet = True
+er_pauset = False
 while kjører_programmet:
+    skjerm.fill(HVIT)
+
+    keys_pressed = pg.key.get_pressed()
+
+    if keys_pressed[K_UP]:
+        styrke *= 1.05
+    elif keys_pressed[K_DOWN]:
+        styrke *= .95
+
     events = pg.event.get()
     for event in events:
         if event.type == pg.QUIT:
             kjører_programmet = False
-    skjerm.fill(HVIT)
+
+        if event.type == pg.KEYDOWN:
+            if event.key == pg.K_m:
+                if not skal_lage_magnetfelt:
+                    skal_lage_magnetfelt = True
+                else:
+                    skal_lage_magnetfelt = False
+
+            elif event.key == pg.K_RIGHT:
+                styrke *= -1
+
+            elif event.key == pg.K_BACKSPACE:
+                alle_magnetfelt.pop()
+
+            elif event.key == pg.K_SPACE:
+                er_pauset = not er_pauset
+
+        if skal_lage_magnetfelt:
+            if event.type == pg.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    start_posisjon_x, start_posisjon_y = pg.mouse.get_pos()
+                    klar_for_magnetfelt = True
+
+            elif event.type == pg.MOUSEMOTION and klar_for_magnetfelt:
+                mus_x, mus_y = pg.mouse.get_pos()
+                bredde = abs(mus_x - start_posisjon_x)
+                høyde = abs(mus_y - start_posisjon_y)
+
+                if bredde > 0 and høyde > 0:
+                    nytt_magnetfelt = Magnetfelt(
+                        styrke, bredde, høyde, start_posisjon_x, start_posisjon_y, farge=LYSEGRØNN
+                    )
+
+            elif event.type == pg.MOUSEBUTTONUP and nytt_magnetfelt:
+                alle_magnetfelt.append(Magnetfelt(
+                        styrke, bredde, høyde, start_posisjon_x, start_posisjon_y, farge=GRØNN
+                    ))
+                nytt_magnetfelt = None
+                skal_lage_magnetfelt = False
+                klar_for_magnetfelt = False
+
+    if nytt_magnetfelt is not None:
+        nytt_magnetfelt.tegn(skjerm)
 
     tidsskala = 10**slider.getValue()
-    slider_output.setText(f"Tidsskala: {tidsskala:.6f}")
+    slider_output.setText(f"Tidsskala: {tidsskala:.8f}")
 
-    medgått_tid += tidsskala*(1/FPS) * tidsstatus.faktor
+    for magnetfelt in alle_magnetfelt:
+        magnetfelt.tegn(skjerm)
 
-    # delta_tid = clock.get_time() / 1000  # seconds
-    b1.tegn(skjerm)
-
-    vis_info(skjerm, medgått_tid, partikler, magnetfelt)
-
-    #info_boks(skjerm, time.time(), partikler, magnetfelt)
+    vis_info(skjerm, medgått_tid, partikler, alle_magnetfelt, styrke)
     
+    if not er_pauset:
+        medgått_tid += tidsskala*(1/FPS) * tidsstatus.faktor
+        
     for particle in partikler:
-        particle.oppdater_og_tegn(skjerm, b1, 1/FPS, tidsskala, lengde, høyde, tidsstatus.faktor)
+        if len(alle_magnetfelt) > 0:
+            for magnetfelt in alle_magnetfelt:
+                particle.oppdater_og_tegn(skjerm, magnetfelt, 1/FPS, tidsskala, lengde, høyde, tidsstatus.faktor, er_pauset)
+        else:
+            particle.oppdater_og_tegn(skjerm, None, 1/FPS, tidsskala, lengde, høyde, tidsstatus.faktor, er_pauset)
 
-    
     clock.tick(FPS)
 
     pg_w.update(events)
