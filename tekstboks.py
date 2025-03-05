@@ -3,10 +3,12 @@ import numpy as np
 
 def vis_info(skjerm, tid, partikler, alle_magnetfelt, styrke):
     font = pg.font.Font(None, 18)
-    info_tekst = f"Tid: {tid:.7f} s\n".rstrip('0').rstrip('.')
+    info_tekst = f"Tid: {tid:.12f} s\n".rstrip('0').rstrip('.')
+
+    info_tekst += "Partikler:\n"
 
     for i, partikkel in enumerate(partikler):
-        info_tekst += f"Partikkel {i+1}: v = {np.linalg.norm(partikkel.v):.6}\n"
+        info_tekst += f" {i+1}:     Type: {partikkel.__class__.__name__},  v = {np.linalg.norm(partikkel.v):.6} m/s\n"
 
     info_tekst += f"Styrke på nytt magnetfelt: {styrke:.5}"
 

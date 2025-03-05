@@ -1,5 +1,5 @@
 import pygame as pg
-from pygame.locals import K_UP, K_DOWN, K_RIGHT
+from pygame.locals import K_UP, K_DOWN, K_LSHIFT
 import pygame_widgets as pg_w
 from pygame_widgets.slider import Slider
 from pygame_widgets.textbox import TextBox
@@ -21,18 +21,18 @@ FPS = 60
 # deklarerer partikler og magnetfelt
 
 b1 = Magnetfelt(-0.00001, 500, 500, 100, 100, farge=GRØNN)
-e1 = Elektron(600, 300, 3e2, 0)
-p1 = Proton(0, 250, 300, 0) # fart i m/s
+e1 = Elektron(600, 300, 3e6, 0)
+p1 = Proton(0, 250, 3e5, 0) # fart i m/s
 
 partikler = [e1, p1]
 alle_magnetfelt = []
 
 slider = Slider(skjerm,
                 15, høyde-20, 300, 7,
-                min=-8,
-                max=0.30103,
+                min=-11,
+                max=0.301029996, # log(10, 2)
                 step=0.001,
-                initial=-8)
+                initial=-11)
 slider_output = TextBox(skjerm, 15, høyde-60, 210, 30, fontSize=20, borderThickness=1)
 slider_output.disable()
 medgått_tid = 0
@@ -92,7 +92,12 @@ while kjører_programmet:
                 styrke *= -1
 
             elif event.key == pg.K_BACKSPACE:
-                alle_magnetfelt.pop()
+                if keys_pressed[K_LSHIFT]:
+                    if len(partikler) > 0:
+                        partikler.pop(0)
+                else:
+                    if len(alle_magnetfelt) > 0:
+                        alle_magnetfelt.pop()
 
             elif event.key == pg.K_SPACE:
                 er_pauset = not er_pauset
