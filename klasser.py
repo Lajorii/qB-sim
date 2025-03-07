@@ -32,7 +32,7 @@ class Partikkel:
         self.radius = radius
         self.farge = farge
 
-    def oppdater_og_tegn(self, skjerm, magnetfelt, delta_tid, tidsskala, lengde, høyde, faktor, er_pauset):  # Small timestep
+    def oppdater_og_tegn(self, skjerm, magnetfelt, delta_tid, tidsskala, lengde, høyde, faktor, er_pauset):
         if er_pauset:
             pg.draw.circle(skjerm, self.farge, (self.pos[0], self.pos[1]), self.radius)
             return

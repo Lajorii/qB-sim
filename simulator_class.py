@@ -11,19 +11,18 @@ import numpy as np
 
 class Simulator:
     def __init__(self):
-        # Initialize pygame and screen
         pg.init()
         self.clock = pg.time.Clock()
         self.skjerm = pg.display.set_mode(size=(lengde, høyde))
 
-        # Declare particles and magnetic field
-        self.b1 = Magnetfelt(-0.00001, 500, 500, 100, 100, farge=GRØNN)
-        self.e1 = Elektron(600, 300, 3e6, 0)
-        self.p1 = Proton(0, 250, 3e5, 0)
-        self.partikler = [self.e1, self.p1]
+        # Initialiserer partikler
+        e1 = Elektron(600, 300, 3e6, 0)
+        p1 = Proton(0, 250, 3e5, 0)
+        self.partikler = [e1, p1]
+
         self.alle_magnetfelt = []
 
-        # UI Elements
+        # UI elementer
         self.slider = Slider(self.skjerm, 15, høyde-20, 300, 7, min=-11, max=0.301029996, step=0.001, initial=-11)
         self.slider_output = TextBox(self.skjerm, 15, høyde-60, 210, 30, fontSize=20, borderThickness=1)
         self.slider_output.disable()
@@ -33,7 +32,7 @@ class Simulator:
                              inactiveColour=(200, 200, 200), hoverColour=(230, 230, 230),
                              pressedColour=(150, 150, 150), onClick=self.tidsstatus.bytt)
 
-        # Simulation variables
+        # simuleringsvariabler
         self.medgått_tid = 0
         self.kjører_programmet = True
         self.er_pauset = False
@@ -42,7 +41,7 @@ class Simulator:
         self.start_posisjon_x, self.start_posisjon_y = None, None
         self.nytt_magnetfelt = None
         self.bredde_magnetfelt, self.høyde_magnetfelt = None, None
-        self.styrke = 0.00005  # Initial magnetic field strength
+        self.styrke = 0.00005  # start-styrken til nye magnetfelt
 
     def handle_events(self, events):
         keys_pressed = pg.key.get_pressed()
