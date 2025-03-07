@@ -1,6 +1,6 @@
 import pygame as pg
 import numpy as np
-from colors import HVIT, SORT, RØD, GRØNN, BLÅ
+from colors import *
 
 class Magnetfelt:
     def __init__(self, B, lengde, høyde, x, y, farge = GRØNN):

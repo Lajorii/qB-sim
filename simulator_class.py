@@ -25,7 +25,7 @@ class Simulator:
         # UI elementer
         self.slider = Slider(self.skjerm, 15, høyde-20, 300, 7, min=-11, max=0.301029996, step=0.001, initial=-11)
         self.slider_output = TextBox(self.skjerm, 15, høyde-60, 210, 30, fontSize=20, borderThickness=1)
-        self.slider_output.disable()
+        self.slider_output.disable() # kan ikke skrive i tekstboks
         
         self.tidsstatus = SimuleringStatus()
         self.button = Button(self.skjerm, 330, høyde-35, 90, 30, text='Reverser tid', fontSize=15,
@@ -41,10 +41,11 @@ class Simulator:
         self.start_posisjon_x, self.start_posisjon_y = None, None
         self.nytt_magnetfelt = None
         self.bredde_magnetfelt, self.høyde_magnetfelt = None, None
-        self.styrke = 0.00005  # start-styrken til nye magnetfelt
+        self.styrke_nytt_magnetfelt = 0.00005  # start-styrken til nye magnetfelt
 
     def handle_events(self, events):
         keys_pressed = pg.key.get_pressed()
+
         for event in events:
             print(f"EVENT: {event}")
 
@@ -52,10 +53,10 @@ class Simulator:
                 self.kjører_programmet = False
 
             if event.type == pg.KEYDOWN:
-                if event.key == pg.K_m:
+                if event.key == pg.K_m: # sier at nå skal vi lage magnetfelt
                     self.skal_lage_magnetfelt = not self.skal_lage_magnetfelt
                 elif event.key == pg.K_RIGHT:
-                    self.styrke *= -1
+                    self.styrke_nytt_magnetfelt *= -1
                 elif event.key == pg.K_BACKSPACE:
                     if keys_pressed[K_LSHIFT]:
                         if self.partikler:
@@ -67,7 +68,7 @@ class Simulator:
                     self.er_pauset = not self.er_pauset
 
             if self.skal_lage_magnetfelt:
-                if event.type == pg.MOUSEBUTTONDOWN and event.button == 1:
+                if event.type == pg.MOUSEBUTTONDOWN and event.button == 1: # sjekker at det er venstre museklikk
                     self.start_posisjon_x, self.start_posisjon_y = pg.mouse.get_pos()
                     self.klar_for_magnetfelt = True
                     self.bredde_magnetfelt, self.høyde_magnetfelt = 0, 0
@@ -77,12 +78,14 @@ class Simulator:
                     self.bredde_magnetfelt = abs(mus_x - self.start_posisjon_x)
                     self.høyde_magnetfelt = abs(mus_y - self.start_posisjon_y)
 
+                    # tegner midlertidig magnetfelt
                     if self.bredde_magnetfelt > 0 and self.høyde_magnetfelt > 0:
-                        self.nytt_magnetfelt = Magnetfelt(self.styrke, self.bredde_magnetfelt, self.høyde_magnetfelt, 
+                        self.nytt_magnetfelt = Magnetfelt(self.styrke_nytt_magnetfelt, self.bredde_magnetfelt, self.høyde_magnetfelt, 
                                                           self.start_posisjon_x, self.start_posisjon_y, farge=LYSEGRØNN)
 
                 elif event.type == pg.MOUSEBUTTONUP and self.nytt_magnetfelt:
-                    self.alle_magnetfelt.append(Magnetfelt(self.styrke, self.bredde_magnetfelt, self.høyde_magnetfelt, 
+                    # legger til permanent magnetfelt
+                    self.alle_magnetfelt.append(Magnetfelt(self.styrke_nytt_magnetfelt, self.bredde_magnetfelt, self.høyde_magnetfelt, 
                                                            self.start_posisjon_x, self.start_posisjon_y, farge=GRØNN))
                     self.nytt_magnetfelt = None
                     self.skal_lage_magnetfelt, self.klar_for_magnetfelt = False, False
@@ -96,7 +99,7 @@ class Simulator:
         for i, partikkel in enumerate(self.partikler):
             info_tekst += f" {i+1}:     Type: {partikkel.__class__.__name__},  v = {np.linalg.norm(partikkel.v):.6} m/s\n"
 
-        info_tekst += f"Styrke på nytt magnetfelt: {self.styrke:.5}"
+        info_tekst += f"Styrke på nytt magnetfelt: {self.styrke_nytt_magnetfelt:.5}"
 
         lines = info_tekst.split("\n")
         y_offset = 10
@@ -115,9 +118,9 @@ class Simulator:
 
             keys_pressed = pg.key.get_pressed()
             if keys_pressed[K_UP]:
-                self.styrke *= 1.05
+                self.styrke_nytt_magnetfelt *= 1.05
             elif keys_pressed[K_DOWN]:
-                self.styrke /= 1.05
+                self.styrke_nytt_magnetfelt /= 1.05
 
             if self.nytt_magnetfelt:
                 self.nytt_magnetfelt.tegn(self.skjerm)
@@ -138,7 +141,7 @@ class Simulator:
                     particle.oppdater_og_tegn(self.skjerm, magnetfelt, 1 / FPS, tidsskala, lengde, høyde, self.tidsstatus.faktor, self.er_pauset)
 
             self.clock.tick(FPS)
-            pg_w.update(events)
+            pg_w.update(events) # oppdaterer importe widgets som sliders
             pg.display.update()
 
         pg.quit()
