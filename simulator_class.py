@@ -113,6 +113,7 @@ class Simulator:
                         self.skal_lage_partikkel = False
                         self.skal_lage_elektron = False
 
+            # TEGNER MAGNETFELT
             if self.skal_lage_magnetfelt:
                 if event.type == pg.MOUSEBUTTONDOWN and event.button == 1: # sjekker at det er venstre museklikk
                     self.magnet_start_posisjon_x, self.magnet_start_posisjon_y = pg.mouse.get_pos()
@@ -135,7 +136,9 @@ class Simulator:
                                                            self.magnet_start_posisjon_x, self.magnet_start_posisjon_y, farge=GRØNN))
                     self.nytt_magnetfelt = None
                     self.skal_lage_magnetfelt, self.klar_for_magnetfelt = False, False
+            # MAGNETFELT SLUTT
 
+            # LAGER NYE PARTIKLER
             elif self.skal_lage_partikkel:
                 if event.type == pg.MOUSEBUTTONDOWN and event.button == 1:
                     self.partikkel_start_posisjon_x, self.partikkel_start_posisjon_y = pg.mouse.get_pos()
@@ -150,6 +153,8 @@ class Simulator:
                     self.temp_pil = None
 
                 elif event.type == pg.MOUSEMOTION and self.partikkel_start_posisjon_x:
+
+                    # konverterer til array for å gjøre vektorregning
                     slutt_pos = np.array(pg.mouse.get_pos())
                     start_pos = np.array([self.partikkel_start_posisjon_x, self.partikkel_start_posisjon_y])
 
@@ -172,7 +177,7 @@ class Simulator:
                     temp_vektor = np.array([dx, dy])
 
                     fart = np.linalg.norm(temp_vektor)
-                    temp_vektor = (temp_vektor/fart) * 0.0016*fart**2.9873 # magisk forhold jeg fant med geogebra
+                    temp_vektor = (temp_vektor/fart) * 0.0016*fart**2.9873 # magisk forhold jeg fant med regresjonsanalyse i geogebra
 
                     if np.linalg.norm(temp_vektor) > 1:
                         if self.skal_lage_elektron:
@@ -184,8 +189,9 @@ class Simulator:
                         
                         self.ny_partikkel = None
                         self.temp_pil = None
+            # LAGER NYE PARTIKLER SLUTT
 
-            
+            # FLYTTER PÅ PARTIKLER
             elif event.type == pg.MOUSEBUTTONDOWN and self.er_pauset and self.skal_flytte_partikkel == False:
                 self.skal_flytte_partikkel = True
                 x, y = event.pos
@@ -205,6 +211,7 @@ class Simulator:
                     if partikkel.skal_flyttes:
                         partikkel.pos[0] = x
                         partikkel.pos[1] = y
+            # FLYTTER PÅ PARTIKLER SLUTT
 
 
     def vis_info(self):
@@ -227,18 +234,14 @@ class Simulator:
                 self.skjerm.blit(tekst, (10, y_offset))
                 y_offset += 15
 
-    def run(self):
-        while self.kjører_programmet:
-            self.skjerm.fill(HVIT)
-            events = pg.event.get()
-            self.handle_events(events) 
-
+    def håndter_styrke(self):
             keys_pressed = pg.key.get_pressed()
             if keys_pressed[K_UP]:
                 self.styrke_nytt_magnetfelt *= 1.05
             elif keys_pressed[K_DOWN]:
                 self.styrke_nytt_magnetfelt /= 1.05
 
+    def tegn(self, tidsskala = 1):
             for magnetfelt in self.alle_magnetfelt:
                 magnetfelt.tegn(self.skjerm)
 
@@ -251,22 +254,33 @@ class Simulator:
 
                 self.ny_partikkel.tegn_midlertidig(self.skjerm)
 
-            tidsskala = 10**self.slider.getValue()
-            self.slider_output.setText(f"Tidsskala: {tidsskala:.8f}")
-
             if self.kill_utenfor_skjerm:
                 for partikkel in self.partikler:
                     if partikkel.pos[0] < 0 or partikkel.pos[0] > lengde or partikkel.pos[1] < 0 or partikkel.pos[1] > høyde:
                         self.partikler.remove(partikkel)
 
-            self.vis_info()
-
-            if not self.er_pauset:
-                self.medgått_tid += tidsskala * (1 / FPS) * self.tidsstatus
+            self.slider_output.setText(f"Tidsskala: {tidsskala:.8f}")
 
             for particle in self.partikler:
                 for magnetfelt in self.alle_magnetfelt or [None]:
                     particle.oppdater_og_tegn(self.skjerm, magnetfelt, 1 / FPS, tidsskala, lengde, høyde, self.tidsstatus, self.er_pauset)
+
+    def run(self):
+        while self.kjører_programmet:
+            self.skjerm.fill(HVIT)
+            events = pg.event.get()
+            self.handle_events(events) 
+
+            self.håndter_styrke()
+
+            self.vis_info()
+
+            tidsskala = 10**self.slider.getValue()
+            
+            if not self.er_pauset:
+                self.medgått_tid += tidsskala * (1 / FPS) * self.tidsstatus
+
+            self.tegn(tidsskala=tidsskala)
 
             self.clock.tick(FPS)
             pg_w.update(events) # oppdaterer importe widgets som sliders
