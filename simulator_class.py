@@ -6,8 +6,9 @@ from pygame_widgets.slider import Slider
 from pygame_widgets.textbox import TextBox
 from pygame_widgets.button import Button
 from colors import *
-from klasser import Magnetfelt, Elektron, Proton
+from klasser_og_funksjoner import Magnetfelt, Elektron, Proton, draw_arrow
 import numpy as np
+import math
 
 class Simulator:
     def __init__(self):
@@ -15,10 +16,7 @@ class Simulator:
         self.clock = pg.time.Clock()
         self.skjerm = pg.display.set_mode(size=(lengde, høyde))
 
-        # Initialiserer partikler
-        e1 = Elektron(600, 300, 3e6, 0)
-        p1 = Proton(0, 250, 3e5, 0)
-        self.partikler = [e1, p1]
+        self.partikler = []
 
         self.alle_magnetfelt = []
 
@@ -27,27 +25,57 @@ class Simulator:
         self.slider_output = TextBox(self.skjerm, 15, høyde-60, 210, 30, fontSize=20, borderThickness=1)
         self.slider_output.disable() # kan ikke skrive i tekstboks
         
-        self.tidsstatus = SimuleringStatus()
-        self.button = Button(self.skjerm, 330, høyde-35, 90, 30, text='Reverser tid', fontSize=15,
+        self.tidsstatus = 1
+        self.reverser_tid_knapp = Button(self.skjerm, 330, høyde-35, 90, 30, text='Reverser tid', fontSize=15,
                              inactiveColour=(200, 200, 200), hoverColour=(230, 230, 230),
-                             pressedColour=(150, 150, 150), onClick=self.tidsstatus.bytt)
-
+                             pressedColour=(150, 150, 150), onClick=self.bytt_tidsretning)
+        
+        self.kill_status_knapp = Button(self.skjerm, 430, høyde-35, 210, 30, text='Fjerner partikler utenfor skjerm', fontSize=15,
+                             inactiveColour=RØD, hoverColour=LYSEGRØNN,
+                             pressedColour=LYSERØD, onClick=self.endre_kill_status)
+    
         # simuleringsvariabler
         self.medgått_tid = 0
         self.kjører_programmet = True
         self.er_pauset = False
         self.skal_lage_magnetfelt = False
         self.klar_for_magnetfelt = False
-        self.start_posisjon_x, self.start_posisjon_y = None, None
+        self.magnet_start_posisjon_x, self.magnet_start_posisjon_y = None, None
         self.nytt_magnetfelt = None
         self.bredde_magnetfelt, self.høyde_magnetfelt = None, None
+        self.skal_flytte_partikkel = False
         self.styrke_nytt_magnetfelt = 0.00005  # start-styrken til nye magnetfelt
+
+        self.partikkel_start_posisjon_x, self.partikkel_start_posisjon_y = None, None
+        self.skal_lage_partikkel = False
+        self.skal_lage_proton = False
+        self.skal_lage_elektron = False
+        self.ny_partikkel = None
+        self.temp_pil = None
+
+        self.kill_utenfor_skjerm = False
+
+    def bytt_tidsretning(self):
+        self.tidsstatus *= -1
+
+    def endre_kill_status(self):
+        if not self.kill_utenfor_skjerm:
+            self.kill_status_knapp.inactiveColour = GRØNN
+            self.kill_status_knapp.hoverColour = LYSERØD
+            self.kill_status_knapp.hoverColour = LYSEGRØNN
+
+        else:
+            self.kill_status_knapp.inactiveColour = RØD
+            self.kill_status_knapp.hoverColour = LYSEGRØNN
+            self.kill_status_knapp.hoverColour = LYSERØD
+
+        self.kill_utenfor_skjerm = not self.kill_utenfor_skjerm
 
     def handle_events(self, events):
         keys_pressed = pg.key.get_pressed()
 
         for event in events:
-            print(f"EVENT: {event}")
+            # print(f"EVENT: {event}")
 
             if event.type == pg.QUIT:
                 self.kjører_programmet = False
@@ -67,28 +95,117 @@ class Simulator:
                 elif event.key == pg.K_SPACE:
                     self.er_pauset = not self.er_pauset
 
+                elif event.key == pg.K_p:
+                    if not self.skal_lage_proton:
+                        self.skal_lage_partikkel = True
+                        self.skal_lage_proton = True
+                        self.skal_lage_elektron = False
+                    else:
+                        self.skal_lage_partikkel = False
+                        self.skal_lage_proton = False
+
+                elif event.key == pg.K_e:
+                    if not self.skal_lage_elektron:
+                        self.skal_lage_partikkel = True
+                        self.skal_lage_proton = False
+                        self.skal_lage_elektron = True
+                    else:
+                        self.skal_lage_partikkel = False
+                        self.skal_lage_elektron = False
+
             if self.skal_lage_magnetfelt:
                 if event.type == pg.MOUSEBUTTONDOWN and event.button == 1: # sjekker at det er venstre museklikk
-                    self.start_posisjon_x, self.start_posisjon_y = pg.mouse.get_pos()
+                    self.magnet_start_posisjon_x, self.magnet_start_posisjon_y = pg.mouse.get_pos()
                     self.klar_for_magnetfelt = True
                     self.bredde_magnetfelt, self.høyde_magnetfelt = 0, 0
 
                 elif event.type == pg.MOUSEMOTION and self.klar_for_magnetfelt:
                     mus_x, mus_y = pg.mouse.get_pos()
-                    self.bredde_magnetfelt = abs(mus_x - self.start_posisjon_x)
-                    self.høyde_magnetfelt = abs(mus_y - self.start_posisjon_y)
+                    self.bredde_magnetfelt = abs(mus_x - self.magnet_start_posisjon_x)
+                    self.høyde_magnetfelt = abs(mus_y - self.magnet_start_posisjon_y)
 
                     # tegner midlertidig magnetfelt
                     if self.bredde_magnetfelt > 0 and self.høyde_magnetfelt > 0:
                         self.nytt_magnetfelt = Magnetfelt(self.styrke_nytt_magnetfelt, self.bredde_magnetfelt, self.høyde_magnetfelt, 
-                                                          self.start_posisjon_x, self.start_posisjon_y, farge=LYSEGRØNN)
+                                                          self.magnet_start_posisjon_x, self.magnet_start_posisjon_y, farge=LYSEGRØNN)
 
                 elif event.type == pg.MOUSEBUTTONUP and self.nytt_magnetfelt:
                     # legger til permanent magnetfelt
                     self.alle_magnetfelt.append(Magnetfelt(self.styrke_nytt_magnetfelt, self.bredde_magnetfelt, self.høyde_magnetfelt, 
-                                                           self.start_posisjon_x, self.start_posisjon_y, farge=GRØNN))
+                                                           self.magnet_start_posisjon_x, self.magnet_start_posisjon_y, farge=GRØNN))
                     self.nytt_magnetfelt = None
                     self.skal_lage_magnetfelt, self.klar_for_magnetfelt = False, False
+
+            elif self.skal_lage_partikkel:
+                if event.type == pg.MOUSEBUTTONDOWN and event.button == 1:
+                    self.partikkel_start_posisjon_x, self.partikkel_start_posisjon_y = pg.mouse.get_pos()
+                    if self.partikkel_start_posisjon_x < 500 and self.partikkel_start_posisjon_y > høyde-60:
+                        return
+                    
+                    if self.skal_lage_proton:
+                        self.ny_partikkel = Proton(self.partikkel_start_posisjon_x, self.partikkel_start_posisjon_y, 0, 0, farge=LYSERØD)
+                    else:
+                        self.ny_partikkel = Elektron(self.partikkel_start_posisjon_x, self.partikkel_start_posisjon_y, 0, 0, farge=LYSEBLÅ)
+
+                    self.temp_pil = None
+
+                elif event.type == pg.MOUSEMOTION and self.partikkel_start_posisjon_x:
+                    slutt_pos = np.array(pg.mouse.get_pos())
+                    start_pos = np.array([self.partikkel_start_posisjon_x, self.partikkel_start_posisjon_y])
+
+                    ny_slutt_pos = 2 * start_pos - slutt_pos
+
+                    start_pos = pg.Vector2(tuple(start_pos))
+                    ny_slutt_pos = pg.Vector2(tuple(ny_slutt_pos))
+
+                    self.temp_pil = (self.skjerm, start_pos, ny_slutt_pos, LYSEGRÅ)
+
+
+                elif event.type == pg.MOUSEBUTTONUP:
+                    if self.partikkel_start_posisjon_x < 500 and self.partikkel_start_posisjon_y > høyde-60:
+                        return
+                    slutt_x, slutt_y = pg.mouse.get_pos()
+                    
+                    dx = self.partikkel_start_posisjon_x - slutt_x
+                    dy = self.partikkel_start_posisjon_y - slutt_y
+
+                    temp_vektor = np.array([dx, dy])
+
+                    fart = np.linalg.norm(temp_vektor)
+                    temp_vektor = (temp_vektor/fart) * 0.0016*fart**2.9873 # magisk forhold jeg fant med geogebra
+
+                    if np.linalg.norm(temp_vektor) > 1:
+                        if self.skal_lage_elektron:
+                            partikkel = Elektron(self.partikkel_start_posisjon_x, self.partikkel_start_posisjon_y, temp_vektor[0], temp_vektor[1])
+                        else:
+                            partikkel = Proton(self.partikkel_start_posisjon_x, self.partikkel_start_posisjon_y, temp_vektor[0], temp_vektor[1])
+                        
+                        self.partikler.append(partikkel)
+                        
+                        self.ny_partikkel = None
+                        self.temp_pil = None
+
+            
+            elif event.type == pg.MOUSEBUTTONDOWN and self.er_pauset and self.skal_flytte_partikkel == False:
+                self.skal_flytte_partikkel = True
+                x, y = event.pos
+                for partikkel in self.partikler:
+                    if math.sqrt((x - partikkel.pos[0]) ** 2 + (y - partikkel.pos[1]) ** 2) <= partikkel.radius:
+                        partikkel.skal_flyttes = True
+
+            elif event.type == pg.MOUSEBUTTONUP and self.er_pauset:
+                for partikkel in self.partikler:
+                    partikkel.skal_flyttes = False
+
+                self.skal_flytte_partikkel = False
+
+            elif event.type == pg.MOUSEMOTION and self.er_pauset and self.skal_flytte_partikkel:
+                x, y  = event.pos
+                for partikkel in self.partikler:
+                    if partikkel.skal_flyttes:
+                        partikkel.pos[0] = x
+                        partikkel.pos[1] = y
+
 
     def vis_info(self):
         font = pg.font.Font(None, 18)
@@ -122,36 +239,40 @@ class Simulator:
             elif keys_pressed[K_DOWN]:
                 self.styrke_nytt_magnetfelt /= 1.05
 
+            for magnetfelt in self.alle_magnetfelt:
+                magnetfelt.tegn(self.skjerm)
+
             if self.nytt_magnetfelt:
                 self.nytt_magnetfelt.tegn(self.skjerm)
+
+            if self.ny_partikkel:
+                if self.temp_pil:
+                    draw_arrow(*self.temp_pil)
+
+                self.ny_partikkel.tegn_midlertidig(self.skjerm)
 
             tidsskala = 10**self.slider.getValue()
             self.slider_output.setText(f"Tidsskala: {tidsskala:.8f}")
 
-            for magnetfelt in self.alle_magnetfelt:
-                magnetfelt.tegn(self.skjerm)
+            if self.kill_utenfor_skjerm:
+                for partikkel in self.partikler:
+                    if partikkel.pos[0] < 0 or partikkel.pos[0] > lengde or partikkel.pos[1] < 0 or partikkel.pos[1] > høyde:
+                        self.partikler.remove(partikkel)
 
             self.vis_info()
 
             if not self.er_pauset:
-                self.medgått_tid += tidsskala * (1 / FPS) * self.tidsstatus.faktor
+                self.medgått_tid += tidsskala * (1 / FPS) * self.tidsstatus
 
             for particle in self.partikler:
                 for magnetfelt in self.alle_magnetfelt or [None]:
-                    particle.oppdater_og_tegn(self.skjerm, magnetfelt, 1 / FPS, tidsskala, lengde, høyde, self.tidsstatus.faktor, self.er_pauset)
+                    particle.oppdater_og_tegn(self.skjerm, magnetfelt, 1 / FPS, tidsskala, lengde, høyde, self.tidsstatus, self.er_pauset)
 
             self.clock.tick(FPS)
             pg_w.update(events) # oppdaterer importe widgets som sliders
             pg.display.update()
 
         pg.quit()
-
-class SimuleringStatus:
-    def __init__(self):
-        self.faktor = 1
-
-    def bytt(self):
-        self.faktor *= -1
 
 if __name__ == "__main__":
     simulator = Simulator()
