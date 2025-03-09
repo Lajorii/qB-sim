@@ -139,7 +139,7 @@ class Simulator:
             elif self.skal_lage_partikkel:
                 if event.type == pg.MOUSEBUTTONDOWN and event.button == 1:
                     self.partikkel_start_posisjon_x, self.partikkel_start_posisjon_y = pg.mouse.get_pos()
-                    if self.partikkel_start_posisjon_x < 500 and self.partikkel_start_posisjon_y > høyde-60:
+                    if self.partikkel_start_posisjon_x < 700 and self.partikkel_start_posisjon_y > høyde-60:
                         return
                     
                     if self.skal_lage_proton:
@@ -162,7 +162,7 @@ class Simulator:
 
 
                 elif event.type == pg.MOUSEBUTTONUP:
-                    if self.partikkel_start_posisjon_x < 500 and self.partikkel_start_posisjon_y > høyde-60:
+                    if self.partikkel_start_posisjon_x < 700 and self.partikkel_start_posisjon_y > høyde-60:
                         return
                     slutt_x, slutt_y = pg.mouse.get_pos()
                     
