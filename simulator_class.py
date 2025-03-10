@@ -30,7 +30,7 @@ class Simulator:
                              inactiveColour=(200, 200, 200), hoverColour=(230, 230, 230),
                              pressedColour=(150, 150, 150), onClick=self.bytt_tidsretning)
         
-        self.kill_status_knapp = Button(self.skjerm, 430, høyde-35, 210, 30, text='Fjerner partikler utenfor skjerm', fontSize=15,
+        self.kill_status_knapp = Button(self.skjerm, 430, høyde-35, 210, 30, text='Sletter partikler utenfor skjerm', fontSize=15,
                              inactiveColour=RØD, hoverColour=LYSEGRØNN,
                              pressedColour=LYSERØD, onClick=self.endre_kill_status)
     
@@ -45,6 +45,8 @@ class Simulator:
         self.bredde_magnetfelt, self.høyde_magnetfelt = None, None
         self.skal_flytte_partikkel = False
         self.styrke_nytt_magnetfelt = 0.00005  # start-styrken til nye magnetfelt
+
+        self.er_elektriske_krefter = True # avstandene er såpass "store" at kreftene er tilnærmet null, og har ingen effekt 
 
         self.partikkel_start_posisjon_x, self.partikkel_start_posisjon_y = None, None
         self.skal_lage_partikkel = False
@@ -263,7 +265,7 @@ class Simulator:
 
             for particle in self.partikler:
                 for magnetfelt in self.alle_magnetfelt or [None]:
-                    particle.oppdater_og_tegn(self.skjerm, magnetfelt, 1 / FPS, tidsskala, lengde, høyde, self.tidsstatus, self.er_pauset)
+                    particle.oppdater_og_tegn(self.skjerm, magnetfelt, 1 / FPS, tidsskala, self.tidsstatus, self.er_pauset, self.partikler, self.er_elektriske_krefter)
 
     def run(self):
         while self.kjører_programmet:
@@ -276,7 +278,7 @@ class Simulator:
             self.vis_info()
 
             tidsskala = 10**self.slider.getValue()
-            
+
             if not self.er_pauset:
                 self.medgått_tid += tidsskala * (1 / FPS) * self.tidsstatus
 

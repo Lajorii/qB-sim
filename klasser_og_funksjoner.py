@@ -34,13 +34,50 @@ class Partikkel:
 
         self.skal_flyttes = False
 
-    def oppdater_og_tegn(self, skjerm, magnetfelt, delta_tid, tidsskala, lengde, høyde, faktor, er_pauset):
+    def elektriske_krefter(self, partikler, delta_tid, tidsskala, faktor):
+        k = 8.9875e-9  # Coulombs konstant i N·m²/C²
+        total_kraft = np.array([0.0, 0.0, 0.0])
+
+        for partikkel in partikler:
+            if partikkel is self:
+                continue  # Unngå å beregne kraft på seg selv
+            
+            r_vektor = partikkel.pos - self.pos  # Vektor fra denne partikkelen til den andre
+            r_avstand = np.linalg.norm(r_vektor)  # Absolutt avstand mellom partikler
+            r_avstand /= 1000
+
+            if r_avstand < 1e-10:  # Unngå numeriske problemer ved veldig små avstander
+                continue
+            
+            r_enhetsvektor = r_vektor / r_avstand  # Normalisert vektor
+            
+            # Coulombs lov: F = k * |q1 * q2| / r^2 * (r-hat)
+            F_styrke = k * (self.q * partikkel.q) / (r_avstand ** 2)
+            F = F_styrke * r_enhetsvektor  # Kraftvektor
+            
+            total_kraft += F  # Akkumulerer bidragene fra alle partikler
+
+        # Newtons andre lov: F = m * a -> a = F / m
+        akselerasjon = total_kraft / self.m
+
+        # Oppdater hastigheten og posisjonen til partikkelen
+        self.v += akselerasjon * delta_tid * tidsskala
+        self.pos += self.v * 1000 * tidsskala * faktor
+
+        print(f"Force on particle: {total_kraft}, Acceleration: {akselerasjon}")
+
+
+    def oppdater_og_tegn(self, skjerm, magnetfelt, delta_tid, tidsskala, faktor, er_pauset, partikler, er_elektriske_krefter):
         if er_pauset:
             pg.draw.circle(skjerm, self.farge, (self.pos[0], self.pos[1]), self.radius)
             return
         
+        # Beregn elektriske krefter hvis de er aktivert
+        if er_elektriske_krefter:
+            self.elektriske_krefter(partikler, delta_tid, tidsskala, faktor)
+
         if magnetfelt is None:
-            self.pos += self.v*1000 * tidsskala * faktor
+            self.pos += self.v * 1000 * tidsskala * faktor
             pg.draw.circle(skjerm, self.farge, (self.pos[0], self.pos[1]), self.radius)
             return
         
@@ -56,12 +93,12 @@ class Partikkel:
 
             self.v = self.v + a * delta_tid * tidsskala
 
-            self.v = (self.v/np.linalg.norm(self.v)) * np.linalg.norm(self.start_v)
+            self.v = (self.v / np.linalg.norm(self.v)) * np.linalg.norm(self.start_v)
 
-            print(np.linalg.norm(self.v))
+        # Oppdater posisjon basert på den nye hastigheten
+        self.pos += self.v * 1000 * tidsskala * faktor
 
-        self.pos += self.v*1000 * tidsskala * faktor
-
+        # Tegn partikkelen
         pg.draw.circle(skjerm, self.farge, (self.pos[0], self.pos[1]), self.radius)
 
     def tegn_midlertidig(self, skjerm):
