@@ -46,7 +46,7 @@ class Simulator:
         self.skal_flytte_partikkel = False
         self.styrke_nytt_magnetfelt = 0.00005  # start-styrken til nye magnetfelt
 
-        self.er_elektriske_krefter = True # avstandene er såpass "store" at kreftene er tilnærmet null, og har ingen effekt 
+        self.er_elektriske_krefter = False # avstandene er såpass "store" at kreftene er tilnærmet null, og har ingen effekt 
 
         self.partikkel_start_posisjon_x, self.partikkel_start_posisjon_y = None, None
         self.skal_lage_partikkel = False
